@@ -1,8 +1,6 @@
 const musicPlayer = {
-    DIRECTION_NEXT: 1,
-    DIRECTION_PREV: -1,
+    isNext: false,
     RESET_THRESHOLD_SECONDS: 2,
-    isNext: true,
 
     songs: [
         {
@@ -44,7 +42,7 @@ const musicPlayer = {
 
     currentIndex: 0,
     isPlaying: false,
-    isLoopMode: localStorage.getItem("loop") === "true",
+    loopMode: localStorage.getItem("loopMode"),
     isShuffleMode: localStorage.getItem("random") === "true",
 
     init() {
@@ -120,16 +118,31 @@ const musicPlayer = {
             this.isPlaying = false;
         };
 
-        this.prevBtn.onclick = this.changeSong.bind(this, this.DIRECTION_PREV);
-        this.nextBtn.onclick = this.changeSong.bind(this, this.DIRECTION_NEXT);
+        this.prevBtn.onclick = this.changeSong.bind(this);
+        this.nextBtn.onclick = this.changeSong.bind(this);
 
         this.loopBtn.onclick = () => {
-            this.isLoopMode = !this.isLoopMode;
+            // Nếu bật Loop thì tắt ngẫu nhiên
+            if (this.isShuffleMode) this.shuffleBtn.click();
+
+            const modes = ["off", "loop-single", "loop-all"];
+            const mode = modes.indexOf(this.loopMode === null ? "off" : this.loopMode);
+            this.loopMode = modes[(mode + 1) % modes.length];
+            this.loopBtn.classList.replace(`${modes[mode]}`, `${this.loopMode}`);
+
             this.updateLoopButton();
-            localStorage.setItem("loop", this.isLoopMode);
+            localStorage.setItem("loopMode", this.loopMode);
         };
 
         this.shuffleBtn.onclick = () => {
+            // Nếu bật ngẫu nhiên thì tắt Lốp!
+            const isLoopMode = this.loopMode === "off";
+            if (!isLoopMode && !this.isShuffleMode) {
+                this.loopBtn.classList.replace(`${this.loopMode}`, "loop-all");
+                this.loopMode = "loop-all";
+                this.loopBtn.click();
+            }
+
             this.isShuffleMode = !this.isShuffleMode;
             this.updateShuffleButton();
             localStorage.setItem("random", this.isShuffleMode);
@@ -151,11 +164,11 @@ const musicPlayer = {
         });
 
         this.audio.onended = () => {
-            if (this.isLoopMode) {
+            if (this.loopMode === "loop-single") {
                 this.audio.currentTime = 0;
                 this.audio.play();
             } else {
-                this.changeSong(this.DIRECTION_NEXT);
+                this.nextBtn.click();
             }
         };
 
@@ -197,20 +210,17 @@ const musicPlayer = {
         return `${m < 10 ? "0" + m : m}:${s < 10 ? "0" + s : s}`;
     },
 
-    changeSong(direction) {
+    changeSong(e) {
         this.isPlaying = true;
+
+        const pre = e?.target.closest(".btn-prev");
+        const next = !this.isNext && e?.target.closest(".btn-next");
+        const redirect = next ? 1 : pre && -1;
+
         const shouldReset = this.audio.currentTime > this.RESET_THRESHOLD_SECONDS;
+        if (redirect === -1 && shouldReset) return (this.audio.currentTime = 0);
 
-        if (direction === this.DIRECTION_PREV && shouldReset) {
-            this.audio.currentTime = 0;
-            return;
-        }
-
-        if (this.isShuffleMode) {
-            this.currentIndex = this.getRandomIndex();
-        } else {
-            this.currentIndex += direction;
-        }
+        this.currentIndex = this.isShuffleMode ? this.getRandomIndex() : this.currentIndex + redirect;
 
         this.updateCurrentIndex();
     },
@@ -231,8 +241,18 @@ const musicPlayer = {
     },
 
     updateLoopButton() {
-        this.audio.loop = this.isLoopMode;
-        this.loopBtn.classList.toggle("active", this.isLoopMode);
+        this.audio.loop = this.loopMode === "loop-single";
+        this.loopBtn.classList.add(this.loopMode !== null ? this.loopMode : "off");
+        this.loopBtn.classList.toggle("active", this.loopMode !== "off");
+        if (this.loopMode === "loop-single") {
+            this.loopBtn.style = "--color-one:  #ec1f55; --color-all:transparent;";
+        }
+        if (this.loopMode === "loop-all") {
+            this.loopBtn.style = "--color-one: transparent; --color-all: #ec1f55;";
+        }
+        if (this.loopMode === "off") {
+            this.loopBtn.style = "--svg-fill:  transparent; --color-one: transparent;--color-all:transparent;";
+        }
     },
 
     updateShuffleButton() {

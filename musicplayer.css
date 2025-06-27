@@ -101,6 +101,7 @@ header h2 {
     padding: 18px 0 8px 0;
 }
 .control .btn {
+    position: relative;
     color: #666;
     padding: 18px;
     font-size: 18px;
@@ -108,6 +109,34 @@ header h2 {
 }
 .control .btn.active {
     color: var(--primary-color);
+}
+
+.control .btn.btn-repeat .fas {
+    color: #666;
+    transition: color 0.2s linear;
+}
+
+.control .btn.btn-repeat.active .fas {
+    color: transparent;
+}
+
+.btn-repeat .text-all {
+    color: var(--color-all, transparent);
+    transition: color 0.2s linear;
+}
+
+.btn-repeat .loop-one {
+    color: var(--color-one, transparent);
+    transition: color 0.2s linear;
+}
+
+.svg-repeat {
+    position: absolute;
+    margin: auto;
+    inset: 0;
+    width: 68%;
+    color: var(--svg-fill, #ec1f55);
+    transition: color 0.2s linear;
 }
 
 .volume-control {
@@ -129,13 +158,13 @@ input.volume-slider {
 }
 
 .volume-btn .turn {
-    transition: color 0.5s linear;
-    color: var(--turn-color, #4caf50);
+    transition: fill 0.5s linear;
+    fill: var(--turn-color, #4caf50);
 }
 
 .volume-btn .mute {
-    transition: color 0.5s linear;
-    color: var(--mute-color, transparent);
+    transition: fill 0.5s linear;
+    fill: var(--mute-color, transparent);
 }
 
 input.volume-slider::-webkit-slider-thumb {
@@ -230,6 +259,7 @@ input.volume-slider::-webkit-slider-thumb {
 .playlist {
     margin-top: 488px;
     padding: 12px;
+    background: #fff;
 }
 
 .song {
