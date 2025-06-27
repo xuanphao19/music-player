@@ -124,14 +124,17 @@ header h2 {
 input.volume-slider {
     width: 76px;
     height: 4px;
-    background: #62fff9;
+    background: linear-gradient(to right, green 0%, red 100%);
+    outline: none;
 }
 
 .volume-btn .turn {
+    transition: color 0.5s linear;
     color: var(--turn-color, #4caf50);
 }
 
 .volume-btn .mute {
+    transition: color 0.5s linear;
     color: var(--mute-color, transparent);
 }
 
@@ -142,7 +145,9 @@ input.volume-slider::-webkit-slider-thumb {
     height: 12px;
     border-radius: 99px;
     opacity: 0.8;
-    background-color: var(--primary-color);
+    background: var(--turn-color, #435f009e);
+    transition: background 0.5s linear;
+    box-shadow: 0px 0px 4px #4caf50, inset 0px 0px 4px #4caf50;
 }
 
 .volume-control svg {

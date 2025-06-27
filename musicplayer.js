@@ -64,7 +64,7 @@ const musicPlayer = {
         this.currentTimeEl = $(".current-time");
         this.durationEl = $(".duration");
         this.volumeSlider = $(".volume-slider");
-        this.volCtrl = $(".volume-btn");
+        this.volCtrl = $(".volume-control");
 
         this.canvas = $("#visualizer");
         this.canvasCtx = this.canvas.getContext("2d");
@@ -160,11 +160,21 @@ const musicPlayer = {
         };
 
         this.volumeSlider.addEventListener("input", (e) => {
-            this.audio.volume = e.target.value;
-            const [turn, mute] = +e.target.value === 0 ? ["transparent", "#4caf50"] : ["#4caf50", "transparent"];
+            const value = parseFloat(e.target.value);
+            this.audio.volume = value;
+
+            const percent = value * 100;
+            const red = Math.round(value * 255);
+            const green = Math.round((1 - value) * 255);
+            const color = `rgb(${red}, ${green}, 0)`;
+            this.volumeSlider.style.background = `linear-gradient(to right, #4caf50 ${
+                value === 0 ? "0%" : `${percent * 0.3}%`
+            }, ${color} ${percent}%)`;
+
+            const [turn, mute] = +value === 0 ? ["transparent", "#4caf50"] : ["#4caf50", "transparent"];
             this.volCtrl.style.setProperty("--turn-color", turn);
             this.volCtrl.style.setProperty("--mute-color", mute);
-            +e.target.value >= 0.7 && this.volCtrl.style.setProperty("--turn-color", "#F44336");
+            value >= 0.6 && this.volCtrl.style.setProperty("--turn-color", "#F44336");
         });
 
         this.playlist.onclick = (e) => {
