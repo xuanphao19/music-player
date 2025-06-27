@@ -124,7 +124,7 @@ header h2 {
 input.volume-slider {
     width: 76px;
     height: 4px;
-    background: linear-gradient(to right, green 0%, red 100%);
+    background: linear-gradient(to right, green 50%, red 100%);
     outline: none;
 }
 
