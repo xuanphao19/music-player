@@ -1,6 +1,10 @@
 const musicPlayer = {
     isNext: false,
-    RESET_THRESHOLD_SECONDS: 2,
+    TIME_LIMIT: 2,
+    isPlaying: false,
+    loopMode: localStorage.getItem("loopMode"),
+    isShuffleMode: localStorage.getItem("random") === "true",
+    currentIndex: Number(localStorage.getItem("songIndex")) || 0,
 
     songs: [
         {
@@ -40,11 +44,6 @@ const musicPlayer = {
         },
     ],
 
-    currentIndex: 0,
-    isPlaying: false,
-    loopMode: localStorage.getItem("loopMode"),
-    isShuffleMode: localStorage.getItem("random") === "true",
-
     init() {
         const $ = document.querySelector.bind(document);
         this.playlist = $(".playlist");
@@ -75,32 +74,9 @@ const musicPlayer = {
         this.bufferLength = this.analyser.frequencyBinCount;
         this.dataArray = new Uint8Array(this.bufferLength);
 
-        this.renderSongsList();
         this.loadCurrentSong();
+        this.renderSongsList();
         this.attachEvents();
-    },
-
-    drawVisualizer() {
-        requestAnimationFrame(this.drawVisualizer.bind(this));
-        this.analyser.getByteFrequencyData(this.dataArray);
-
-        const width = this.canvas.width;
-        const height = this.canvas.height;
-        const barWidth = (width / this.bufferLength) * 2.5;
-
-        this.canvasCtx.clearRect(0, 0, width, height);
-
-        let x = 0;
-        for (let i = 0; i < this.bufferLength; i++) {
-            const barHeight = this.dataArray[i] / 2;
-            const red = barHeight + 100;
-            const green = i * 5;
-            const blue = 255 - barHeight;
-            this.canvasCtx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
-
-            this.canvasCtx.fillRect(x, height - barHeight, barWidth, barHeight);
-            x += barWidth + 1;
-        }
     },
 
     attachEvents() {
@@ -126,9 +102,9 @@ const musicPlayer = {
             if (this.isShuffleMode) this.shuffleBtn.click();
 
             const modes = ["off", "loop-single", "loop-all"];
-            const mode = modes.indexOf(this.loopMode === null ? "off" : this.loopMode);
-            this.loopMode = modes[(mode + 1) % modes.length];
-            this.loopBtn.classList.replace(`${modes[mode]}`, `${this.loopMode}`);
+            const current = this.loopMode ?? "off";
+            const nextIndex = (modes.indexOf(current) + 1) % modes.length;
+            this.loopMode = modes[nextIndex];
 
             this.updateLoopButton();
             localStorage.setItem("loopMode", this.loopMode);
@@ -136,8 +112,8 @@ const musicPlayer = {
 
         this.shuffleBtn.onclick = () => {
             // Nếu bật ngẫu nhiên thì tắt Lốp!
-            const isLoopMode = this.loopMode === "off";
-            if (!isLoopMode && !this.isShuffleMode) {
+            const isLoopMode = this.loopMode !== "off";
+            if (isLoopMode && !this.isShuffleMode) {
                 this.loopBtn.classList.replace(`${this.loopMode}`, "loop-all");
                 this.loopMode = "loop-all";
                 this.loopBtn.click();
@@ -167,62 +143,28 @@ const musicPlayer = {
             if (this.loopMode === "loop-single") {
                 this.audio.currentTime = 0;
                 this.audio.play();
-            } else {
+            } else if (this.loopMode === "loop-all" || this.currentIndex < this.songs.length - 1) {
+                // Thỏa mãn loop === off thì phát hết danh sách sẽ dừng
                 this.nextBtn.click();
             }
         };
 
-        this.volumeSlider.addEventListener("input", (e) => {
-            const value = parseFloat(e.target.value);
-            this.audio.volume = value;
-
-            const percent = value * 100;
-            const red = Math.round(value * 255);
-            const green = Math.round((1 - value) * 255);
-            const color = `rgb(${red}, ${green}, 0)`;
-            this.volumeSlider.style.background = `linear-gradient(to right, #4caf50 ${
-                value === 0 ? "0%" : `${percent * 0.3}%`
-            }, ${color} ${percent}%)`;
-
-            const [turn, mute] = +value === 0 ? ["transparent", "#4caf50"] : ["#4caf50", "transparent"];
-            this.volCtrl.style.setProperty("--turn-color", turn);
-            this.volCtrl.style.setProperty("--mute-color", mute);
-            value >= 0.6 && this.volCtrl.style.setProperty("--turn-color", "#F44336");
-        });
+        this.volumeSlider.addEventListener("input", this.handleVolume.bind(this));
 
         this.playlist.onclick = (e) => {
             const songNode = e.target.closest(".song");
             if (!songNode) return;
 
             const clickedIndex = [...this.playlist.children].indexOf(songNode);
+            if (clickedIndex === this.currentIndex) return;
+
             if (clickedIndex !== -1) {
                 this.currentIndex = clickedIndex;
                 this.loadCurrentSong();
-                this.renderSongsList();
+                this.markCurrentSong();
                 this.audio.play();
             }
         };
-    },
-
-    formatTime(seconds) {
-        const m = Math.floor(seconds / 60);
-        const s = Math.floor(seconds % 60);
-        return `${m < 10 ? "0" + m : m}:${s < 10 ? "0" + s : s}`;
-    },
-
-    changeSong(e) {
-        this.isPlaying = true;
-
-        const pre = e?.target.closest(".btn-prev");
-        const next = !this.isNext && e?.target.closest(".btn-next");
-        const redirect = next ? 1 : pre && -1;
-
-        const shouldReset = this.audio.currentTime > this.RESET_THRESHOLD_SECONDS;
-        if (redirect === -1 && shouldReset) return (this.audio.currentTime = 0);
-
-        this.currentIndex = this.isShuffleMode ? this.getRandomIndex() : this.currentIndex + redirect;
-
-        this.updateCurrentIndex();
     },
 
     getRandomIndex() {
@@ -234,29 +176,21 @@ const musicPlayer = {
         return index;
     },
 
-    updateCurrentIndex() {
+    handleCurrentIndex() {
         this.currentIndex = (this.currentIndex + this.songs.length) % this.songs.length;
+
         this.loadCurrentSong();
-        this.renderSongsList();
+        this.markCurrentSong();
     },
 
-    updateLoopButton() {
-        this.audio.loop = this.loopMode === "loop-single";
-        this.loopBtn.classList.add(this.loopMode !== null ? this.loopMode : "off");
-        this.loopBtn.classList.toggle("active", this.loopMode !== "off");
-        if (this.loopMode === "loop-single") {
-            this.loopBtn.style = "--color-one:  #ec1f55; --color-all:transparent;";
-        }
-        if (this.loopMode === "loop-all") {
-            this.loopBtn.style = "--color-one: transparent; --color-all: #ec1f55;";
-        }
-        if (this.loopMode === "off") {
-            this.loopBtn.style = "--svg-fill:  transparent; --color-one: transparent;--color-all:transparent;";
-        }
+    savePlayingIndex() {
+        localStorage.setItem("songIndex", this.currentIndex);
     },
 
-    updateShuffleButton() {
-        this.shuffleBtn.classList.toggle("active", this.isShuffleMode);
+    getCurrentSong() {
+        const song = this.songs[this.currentIndex];
+        this.savePlayingIndex();
+        return song;
     },
 
     loadCurrentSong() {
@@ -281,18 +215,75 @@ const musicPlayer = {
         };
     },
 
-    getCurrentSong() {
-        return this.songs[this.currentIndex];
+    changeSong(e) {
+        this.isPlaying = true;
+
+        const pre = e?.target.closest(".btn-prev");
+        const next = !this.isNext && e?.target.closest(".btn-next");
+        const redirect = next ? 1 : pre && -1;
+
+        const shouldReset = this.audio.currentTime > this.TIME_LIMIT;
+        if (redirect === -1 && shouldReset) return (this.audio.currentTime = 0);
+
+        this.currentIndex = this.isShuffleMode ? this.getRandomIndex() : this.currentIndex + redirect;
+
+        this.handleCurrentIndex();
+    },
+
+    updateLoopButton() {
+        this.audio.loop = this.loopMode === "loop-single";
+        this.loopBtn.classList.remove("loop-single", "loop-all", "off", "active");
+
+        const mode = this.loopMode ?? "off";
+        this.loopBtn.classList.add(mode);
+        this.loopBtn.classList.toggle("active", mode !== "off");
+
+        if (mode === "loop-single") {
+            this.loopBtn.style.cssText = `--color-one: #ec1f55;  --color-all: transparent;  --svg-fill: unset;`;
+        } else if (mode === "loop-all") {
+            this.loopBtn.style.cssText = `--color-one: transparent; --color-all: #ec1f55;  --svg-fill: unset;`;
+        } else {
+            this.loopBtn.style.cssText = `--color-one: transparent; --color-all: transparent; -svg-fill: transparent;`;
+        }
+    },
+
+    updateShuffleButton() {
+        this.shuffleBtn.classList.toggle("active", this.isShuffleMode);
+    },
+
+    handleVolume(e) {
+        const value = parseFloat(e.target.value);
+        this.audio.volume = value;
+
+        const percent = value * 100;
+        const red = Math.round(value * 255);
+        const green = Math.round((1 - value) * 255);
+        const color = `rgb(${red}, ${green}, 0)`;
+        this.volumeSlider.style.background = `linear-gradient(to right, #4caf50 ${
+            value === 0 ? "0%" : `${percent * 0.3}%`
+        }, ${color} ${percent}%)`;
+
+        const [turn, mute] = +value === 0 ? ["transparent", "#4caf50"] : ["#4caf50", "transparent"];
+        this.volCtrl.style.setProperty("--turn-color", turn);
+        this.volCtrl.style.setProperty("--mute-color", mute);
+        value >= 0.6 && this.volCtrl.style.setProperty("--turn-color", "#F44336");
     },
 
     togglePlayPause() {
         this.audio.paused ? this.audio.play() : this.audio.pause();
     },
 
+    formatTime(seconds) {
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        return `${m < 10 ? "0" + m : m}:${s < 10 ? "0" + s : s}`;
+    },
+
     renderSongsList() {
         const html = this.songs
             .map((song, index) => {
                 const isActive = index === this.currentIndex;
+
                 return (
                     `<div class="song ${isActive ? "active" : ""}">` +
                     `<div class="thumb" style="background-image: url('${song.image}');"></div>` +
@@ -309,11 +300,41 @@ const musicPlayer = {
         this.playlist.innerHTML = html;
     },
 
+    markCurrentSong() {
+        const children = [...this.playlist.children];
+        children.forEach((child, index) => {
+            child.classList.toggle("active", index === this.currentIndex);
+        });
+    },
+
     sanitizeText(text) {
         if (typeof text !== "string") return "";
         const tempDiv = document.createElement("div");
         tempDiv.textContent = text;
         return tempDiv.innerHTML;
+    },
+
+    drawVisualizer() {
+        requestAnimationFrame(this.drawVisualizer.bind(this));
+        this.analyser.getByteFrequencyData(this.dataArray);
+
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+        const barWidth = (width / this.bufferLength) * 2.5;
+
+        this.canvasCtx.clearRect(0, 0, width, height);
+
+        let x = 0;
+        for (let i = 0; i < this.bufferLength; i++) {
+            const barHeight = this.dataArray[i] / 2;
+            const red = barHeight + 100;
+            const green = i * 5;
+            const blue = 255 - barHeight;
+            this.canvasCtx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
+
+            this.canvasCtx.fillRect(x, height - barHeight, barWidth, barHeight);
+            x += barWidth + 1;
+        }
     },
 };
 
