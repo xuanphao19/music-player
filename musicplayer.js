@@ -9,7 +9,7 @@ const musicPlayer = {
     songs: [
         {
             id: 1,
-            filePath: "./songs/audio_a6.mp3",
+            filePath: "./songs/audio_8.mp3",
             title: "Chạy ngay đi",
             artist: "Sơn Tùng M-TP",
             image: "https://thanhnien.mediacdn.vn/Uploaded/caotung/2022_08_07/ca-si-mono-2225.jpg",
@@ -42,10 +42,25 @@ const musicPlayer = {
             artist: "Tùng Dương",
             image: "https://a10.gaanacdn.com/images/albums/72/3019572/crop_480x480_3019572.jpg",
         },
+        {
+            id: 6,
+            filePath: "./songs/audio_a6.mp3",
+            title: "Tái sinh",
+            artist: "Tùng Dương",
+            image: "https://a10.gaanacdn.com/images/albums/72/3019572/crop_480x480_3019572.jpg",
+        },
+        {
+            id: 7,
+            filePath: "./songs/TaiSinh-TungDuong-16735175.mp3",
+            title: "Tái sinh",
+            artist: "Tùng Dương",
+            image: "https://a10.gaanacdn.com/images/albums/72/3019572/crop_480x480_3019572.jpg",
+        },
     ],
 
     init() {
         const $ = document.querySelector.bind(document);
+        this.player = $(".player");
         this.playlist = $(".playlist");
         this.togglePlayBtn = $(".btn-toggle-play");
         this.title = $(".playing-title");
@@ -62,6 +77,7 @@ const musicPlayer = {
         this.durationEl = $(".duration");
         this.volumeSlider = $(".volume-slider");
         this.volCtrl = $(".volume-control");
+        this.dashboard = $(".dashboard");
 
         this.canvas = $("#visualizer");
         this.canvasCtx = this.canvas.getContext("2d");
@@ -156,7 +172,9 @@ const musicPlayer = {
             if (!songNode) return;
 
             const clickedIndex = [...this.playlist.children].indexOf(songNode);
-            if (clickedIndex === this.currentIndex) return;
+            if (clickedIndex === this.currentIndex) {
+                return this.isPlaying ? this.audio.pause() : this.audio.play();
+            }
 
             if (clickedIndex !== -1) {
                 this.currentIndex = clickedIndex;
@@ -177,7 +195,8 @@ const musicPlayer = {
     },
 
     handleCurrentIndex() {
-        this.currentIndex = (this.currentIndex + this.songs.length) % this.songs.length;
+        const length = this.songs.length;
+        this.currentIndex = (this.currentIndex + length) % length;
 
         this.loadCurrentSong();
         this.markCurrentSong();
@@ -302,11 +321,24 @@ const musicPlayer = {
 
     markCurrentSong() {
         const children = [...this.playlist.children];
+
         children.forEach((child, index) => {
-            child.classList.toggle("active", index === this.currentIndex);
+            const isActive = index === this.currentIndex;
+            child.classList.toggle("active", isActive);
+
+            if (isActive) {
+                const dashboard = document.querySelector(".dashboard");
+                const dashboardHeight =
+                    dashboard && window.getComputedStyle(dashboard).display !== "none" ? dashboard.offsetHeight : 0;
+
+                const topOffset = child.offsetTop - dashboardHeight - 10;
+                this.player.scrollTo({
+                    top: topOffset,
+                    behavior: "smooth",
+                });
+            }
         });
     },
-
     sanitizeText(text) {
         if (typeof text !== "string") return "";
         const tempDiv = document.createElement("div");
@@ -339,3 +371,6 @@ const musicPlayer = {
 };
 
 musicPlayer.init();
+
+// const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+// console.log("userTimeZone : ", userTimeZone);
