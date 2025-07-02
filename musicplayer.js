@@ -179,7 +179,6 @@ const musicPlayer = {
             if (clickedIndex !== -1) {
                 this.currentIndex = clickedIndex;
                 this.loadCurrentSong();
-                this.markCurrentSong();
                 this.audio.play();
             }
         };
@@ -197,9 +196,7 @@ const musicPlayer = {
     handleCurrentIndex() {
         const length = this.songs.length;
         this.currentIndex = (this.currentIndex + length) % length;
-
         this.loadCurrentSong();
-        this.markCurrentSong();
     },
 
     savePlayingIndex() {
@@ -221,6 +218,7 @@ const musicPlayer = {
 
         this.updateLoopButton();
         this.updateShuffleButton();
+        this.markCurrentSong();
 
         this.audio.onloadedmetadata = () => {
             this.progress.max = this.audio.duration;
@@ -327,13 +325,11 @@ const musicPlayer = {
             child.classList.toggle("active", isActive);
 
             if (isActive) {
-                const dashboard = document.querySelector(".dashboard");
-                const dashboardHeight =
-                    dashboard && window.getComputedStyle(dashboard).display !== "none" ? dashboard.offsetHeight : 0;
+                const dashHeight = this.dashboard.offsetHeight;
+                const offset = child.offsetTop - dashHeight - 10;
 
-                const topOffset = child.offsetTop - dashboardHeight - 10;
                 this.player.scrollTo({
-                    top: topOffset,
+                    top: offset,
                     behavior: "smooth",
                 });
             }
