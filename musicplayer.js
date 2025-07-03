@@ -284,7 +284,7 @@ const musicPlayer = {
     },
 
     updateProgressCircle(percentage) {
-        const circumference = 283;
+        const circumference = 292;
         const offset = circumference * (1 - percentage / 100);
         this.progressCircle.setAttribute("stroke-dashoffset", offset);
     },
