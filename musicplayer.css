@@ -25,6 +25,9 @@ html {
     height: 980px;
     margin: 0 auto;
     overflow-y: auto;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .player .icon-pause {
@@ -75,15 +78,24 @@ header h2 {
 .cd-thumb {
     position: relative;
     display: flex;
-    width: 100%;
-    padding-top: 100%;
-    border-radius: 50%;
-    background-color: #333;
-    background-size: cover;
-    margin: auto;
     align-items: center;
     justify-content: center;
+
+    width: 100%;
+    padding-top: 100%;
+    border-radius: 9999px;
+    background-size: cover;
+    margin: auto;
     overflow: hidden;
+}
+
+.cd-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
 }
 
 .cd-thumb img {
@@ -159,6 +171,7 @@ header h2 {
     top: -50px;
     gap: 8px;
     transform: rotate(-90deg);
+    touch-action: none;
 }
 
 input.volume-slider {
@@ -166,6 +179,7 @@ input.volume-slider {
     height: 4px;
     background: linear-gradient(to right, green 50%, red 100%);
     outline: none;
+    touch-action: none;
 }
 
 .volume-btn .turn {
@@ -234,6 +248,7 @@ input.volume-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     background: transparent;
     cursor: pointer;
+    touch-action: none;
 }
 
 .progress-label {

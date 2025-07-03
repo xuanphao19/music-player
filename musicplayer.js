@@ -78,6 +78,8 @@ const musicPlayer = {
         this.volumeSlider = $(".volume-slider");
         this.volCtrl = $(".volume-control");
         this.dashboard = $(".dashboard");
+        this.circleSvg = $(".cd-svg");
+        this.progressCircle = $(".progress-circle");
 
         this.canvas = $("#visualizer");
         this.canvasCtx = this.canvas.getContext("2d");
@@ -96,6 +98,8 @@ const musicPlayer = {
     },
 
     attachEvents() {
+        let isStrokeDragging = false;
+        let isVolumeDragging = false;
         this.togglePlayBtn.onclick = this.togglePlayPause.bind(this);
 
         this.audio.onplay = () => {
@@ -112,6 +116,22 @@ const musicPlayer = {
 
         this.prevBtn.onclick = this.changeSong.bind(this);
         this.nextBtn.onclick = this.changeSong.bind(this);
+        this.volumeSlider.oninput = this.handleVolume.bind(this);
+
+        this.volumeSlider.addEventListener("touchstart", () => {
+            isVolumeDragging = true;
+        });
+
+        this.volumeSlider.addEventListener("touchmove", (e) => {
+            if (isVolumeDragging) {
+                if (e.cancelable) e.preventDefault();
+                this.handleTouchMove(e, this.volumeSlider, this.handleVolume);
+            }
+        });
+
+        this.volumeSlider.addEventListener("touchend", () => {
+            isVolumeDragging = false;
+        });
 
         this.loopBtn.onclick = () => {
             // Nếu bật Loop thì tắt ngẫu nhiên
@@ -142,17 +162,68 @@ const musicPlayer = {
 
         this.audio.ontimeupdate = () => {
             this.progress.value = this.audio.currentTime;
+            const percentage = isNaN(this.audio.duration) ? 0 : (this.audio.currentTime / this.audio.duration) * 100;
+            this.updateProgressCircle(percentage);
             this.currentTimeEl.textContent = this.formatTime(this.audio.currentTime);
         };
 
-        this.progress.addEventListener("input", () => {
+        this.progress.oninput = () => {
             if (!this.audio.paused) (this.progress.seeking = true), this.audio.pause();
             this.audio.currentTime = this.progress.value;
-        });
+        };
 
-        this.progress.addEventListener("change", () => {
+        this.progress.onchange = () => {
             if (this.progress.seeking) this.audio.play();
             this.progress.seeking = false;
+        };
+
+        this.progress.addEventListener("touchstart", () => {
+            this.progress.seeking = true;
+        });
+
+        this.progress.addEventListener("touchmove", (e) => {
+            this.handleTouchMove(e, this.progress, this.updateProgress);
+        });
+
+        this.progress.addEventListener("touchend", () => {
+            if (this.progress.seeking) {
+                this.audio.play();
+                this.progress.seeking = false;
+            }
+        });
+
+        this.circleSvg.onmousedown = (e) => {
+            isStrokeDragging = true;
+            this.progress.seeking = true;
+            this.handleSvgInteraction.call(this, e);
+        };
+
+        this.player.onmousemove = (e) => {
+            if (isStrokeDragging) {
+                this.handleSvgInteraction.call(this, e);
+            }
+        };
+
+        this.player.onmouseup = () => {
+            if (isStrokeDragging && this.progress.seeking) {
+                this.audio.play();
+                this.progress.seeking = false;
+                isStrokeDragging = false;
+            }
+        };
+
+        this.circleSvg.addEventListener("touchstart", (e) => {
+            this.progress.seeking = true;
+            this.handleSvgInteraction.call(this, e);
+        });
+
+        this.circleSvg.addEventListener("touchmove", this.handleSvgInteraction.bind(this));
+
+        this.circleSvg.addEventListener("touchend", () => {
+            if (this.progress.seeking) {
+                this.audio.play();
+                this.progress.seeking = false;
+            }
         });
 
         this.audio.onended = () => {
@@ -164,8 +235,6 @@ const musicPlayer = {
                 this.nextBtn.click();
             }
         };
-
-        this.volumeSlider.addEventListener("input", this.handleVolume.bind(this));
 
         this.playlist.onclick = (e) => {
             const songNode = e.target.closest(".song");
@@ -182,6 +251,60 @@ const musicPlayer = {
                 this.audio.play();
             }
         };
+    },
+
+    handleTouchMove(e, element, callback) {
+        if (e.cancelable) e.preventDefault();
+        const touch = e.touches[0];
+        const rect = element.getBoundingClientRect();
+        const isVolume = element === this.volumeSlider;
+        const value = (() => {
+            const ratio = isVolume
+                ? (rect.bottom - touch.clientY) / rect.height
+                : ((touch.clientX - rect.left) / rect.width) * this.audio.duration;
+            return Math.min(Math.max(ratio, 0), isVolume ? 1 : this.audio.duration);
+        })();
+
+        element.value = value;
+        if (isVolume) {
+            callback.call(this, { target: element });
+        } else {
+            const percentage = isNaN(this.audio.duration) ? 0 : (value / this.audio.duration) * 100;
+            callback.call(this, value, percentage);
+        }
+    },
+
+    updateProgress(currentTime, percentage) {
+        this.progress.seeking = true;
+        if (!this.audio.paused) this.audio.pause();
+        this.audio.currentTime = currentTime;
+        this.progress.value = currentTime;
+        this.updateProgressCircle(percentage);
+        this.currentTimeEl.textContent = this.formatTime(currentTime);
+    },
+
+    updateProgressCircle(percentage) {
+        const circumference = 283;
+        const offset = circumference * (1 - percentage / 100);
+        this.progressCircle.setAttribute("stroke-dashoffset", offset);
+    },
+
+    handleSvgInteraction(e) {
+        e.preventDefault();
+        const isTouch = e.type.startsWith("touch");
+        const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+        const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+        const rect = this.circleSvg.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const deltaX = clientX - centerX;
+        const deltaY = clientY - centerY;
+
+        let angle = (Math.atan2(deltaY, deltaX) * 180) / Math.PI + 90;
+        if (angle < 0) angle += 360;
+        const percentage = (angle / 360) * 100;
+        const currentTime = isNaN(this.audio.duration) ? 0 : (percentage / 100) * this.audio.duration;
+        this.updateProgress(currentTime, percentage);
     },
 
     getRandomIndex() {
@@ -253,15 +376,20 @@ const musicPlayer = {
 
         const mode = this.loopMode ?? "off";
         this.loopBtn.classList.add(mode);
-        this.loopBtn.classList.toggle("active", mode !== "off");
 
-        if (mode === "loop-single") {
-            this.loopBtn.style.cssText = `--color-one: #ec1f55;  --color-all: transparent;  --svg-fill: unset;`;
-        } else if (mode === "loop-all") {
-            this.loopBtn.style.cssText = `--color-one: transparent; --color-all: #ec1f55;  --svg-fill: unset;`;
-        } else {
-            this.loopBtn.style.cssText = `--color-one: transparent; --color-all: transparent; -svg-fill: transparent;`;
-        }
+        this.loopBtn.classList.toggle("active", mode !== "off");
+        this.loopBtn.style.cssText =
+            mode === "loop-single"
+                ? `--color-one: #ec1f55;
+                --color-all: transparent;
+                --svg-fill: unset;`
+                : mode === "loop-all"
+                ? `--color-one: transparent;
+                --color-all: #ec1f55;
+                --svg-fill: unset;`
+                : `--color-one: transparent;
+                --color-all: transparent;
+                --svg-fill: transparent;`;
     },
 
     updateShuffleButton() {
@@ -277,7 +405,7 @@ const musicPlayer = {
         const green = Math.round((1 - value) * 255);
         const color = `rgb(${red}, ${green}, 0)`;
         this.volumeSlider.style.background = `linear-gradient(to right, #4caf50 ${
-            value === 0 ? "0%" : `${percent * 0.3}%`
+            value === 0 ? "10%" : `${percent * 0.3}%`
         }, ${color} ${percent}%)`;
 
         const [turn, mute] = +value === 0 ? ["transparent", "#4caf50"] : ["#4caf50", "transparent"];
@@ -335,6 +463,7 @@ const musicPlayer = {
             }
         });
     },
+
     sanitizeText(text) {
         if (typeof text !== "string") return "";
         const tempDiv = document.createElement("div");
