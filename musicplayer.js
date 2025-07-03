@@ -300,6 +300,7 @@ const musicPlayer = {
         const deltaX = clientX - centerX;
         const deltaY = clientY - centerY;
 
+        // Cái này mình nhờ thằng GPT nhé Vì ngu lượng từ nhỏ!
         let angle = (Math.atan2(deltaY, deltaX) * 180) / Math.PI + 90;
         if (angle < 0) angle += 360;
         const percentage = (angle / 360) * 100;
@@ -496,6 +497,3 @@ const musicPlayer = {
 };
 
 musicPlayer.init();
-
-// const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-// console.log("userTimeZone : ", userTimeZone);
