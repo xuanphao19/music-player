@@ -105,6 +105,27 @@ header h2 {
     aspect-ratio: 1;
     object-fit: cover;
     object-position: top;
+    animation: rotate 10s linear infinite;
+    animation-play-state: paused;
+}
+
+.cd-thumb::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 20%;
+    aspect-ratio: 1;
+    border-radius: 9999px;
+    background: #f8f8f8;
+}
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* CONTROL */

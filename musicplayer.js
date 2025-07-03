@@ -72,12 +72,14 @@ const musicPlayer = {
         this.nextBtn = $(".btn-next");
         this.loopBtn = $(".btn-repeat");
         this.shuffleBtn = $(".btn-random");
-        this.progress = $("#progress");
         this.currentTimeEl = $(".current-time");
         this.durationEl = $(".duration");
-        this.volumeSlider = $(".volume-slider");
         this.volCtrl = $(".volume-control");
+        this.volumeSlider = $(".volume-slider");
         this.dashboard = $(".dashboard");
+        this.cdThumb = $(".cd-thumb img");
+
+        this.progress = $(".progress");
         this.circleSvg = $(".cd-svg");
         this.progressCircle = $(".progress-circle");
 
@@ -107,11 +109,13 @@ const musicPlayer = {
             this.drawVisualizer();
             this.playIcon.classList.replace("fa-play", "fa-pause");
             this.isPlaying = true;
+            this.cdThumb.style.animationPlayState = "running";
         };
 
         this.audio.onpause = () => {
             if (!this.progress.seeking) this.playIcon.classList.replace("fa-pause", "fa-play");
             this.isPlaying = false;
+            this.cdThumb.style.animationPlayState = "paused";
         };
 
         this.prevBtn.onclick = this.changeSong.bind(this);
